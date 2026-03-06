@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Form Renderer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .form-container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: bold;
+        }
+        input[type="text"],
+        input[type="number"],
+        input[type="date"] {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h1 id="formTitle">Loading...</h1>
+        <form id="dynamicForm">
+            <!-- Form fields will be rendered here -->
+        </form>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        // Fetch form definition and render
+        async function loadForm() {
+            try {
+                const response = await fetch('/api/forms/employee-search');
+                const formDef = await response.json();
+                
+                document.getElementById('formTitle').textContent = formDef.title;
+                
+                const formElement = document.getElementById('dynamicForm');
+                formElement.innerHTML = '';
+                
+                // Render each field
+                formDef.fields.forEach(field => {
+                    const formGroup = document.createElement('div');
+                    formGroup.className = 'form-group';
+                    
+                    const label = document.createElement('label');
+                    label.textContent = field.label;
+                    label.htmlFor = field.name;
+                    
+                    const input = document.createElement('input');
+                    input.type = field.type;
+                    input.id = field.name;
+                    input.name = field.name;
+                    
+                    formGroup.appendChild(label);
+                    formGroup.appendChild(input);
+                    formElement.appendChild(formGroup);
+                });
+                
+                // Add submit button
+                const submitBtn = document.createElement('button');
+                submitBtn.type = 'submit';
+                submitBtn.textContent = 'Submit';
+                formElement.appendChild(submitBtn);
+                
+                // Handle form submission
+                formElement.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    
+                    const formData = {};
+                    formDef.fields.forEach(field => {
+                        formData[field.name] = document.getElementById(field.name).value;
+                    });
+                    
+                    try {
+                        const response = await fetch('/api/forms/employee-search', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                title: formDef.title,
+                                fields: formDef.fields.map(f => ({
+                                    ...f,
+                                    value: formData[f.name]
+                                }))
+                            })
+                        });
+                        
+                        const result = await response.json();
+                        const resultDiv = document.getElementById('result');
+                        resultDiv.style.display = 'block';
+                        resultDiv.innerHTML = '<strong>Form submitted successfully!</strong><br>' + 
+                                            '<pre>' + JSON.stringify(result, null, 2) + '</pre>';
+                    } catch (error) {
+                        alert('Error submitting form: ' + error.message);
+                    }
+                });
+                
+            } catch (error) {
+                document.getElementById('formTitle').textContent = 'Error loading form';
+                console.error('Error:', error);
+            }
+        }
+        
+        // Load form on page load
+        loadForm();
+    </script>
+</body>
+</html>
